@@ -15,7 +15,7 @@ Thread-safe hash with per-key TTL and automatic expiration
 Add to your Gemfile:
 
 ```ruby
-gem 'philiprehberger-expiring_map'
+gem "philiprehberger-expiring_map"
 ```
 
 Or install directly:
