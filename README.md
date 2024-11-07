@@ -64,6 +64,43 @@ cache.set(:session, data)
 cache.touch(:session)  # resets TTL to default
 ```
 
+### Bulk Operations
+
+```ruby
+cache.set_many({ user: "alice", role: "admin", theme: "dark" })
+cache.set_many({ token: "abc", nonce: "xyz" }, ttl: 60)
+
+result = cache.get_many(:user, :role, :missing)
+# => { user: "alice", role: "admin", missing: nil }
+```
+
+### Statistics
+
+```ruby
+cache.set(:a, 1)
+cache.get(:a)        # hit
+cache.get(:missing)  # miss
+cache.stats
+# => { hits: 1, misses: 1, expirations: 0, evictions: 0, size: 1 }
+```
+
+### Keys and Values
+
+```ruby
+cache.set(:x, 10)
+cache.set(:y, 20)
+cache.keys    # => [:x, :y]
+cache.values  # => [10, 20]
+```
+
+### Predicate Deletion
+
+```ruby
+cache.set(:a, 1)
+cache.set(:b, 10)
+cache.delete_if { |_key, value| value >= 10 }  # => 1
+```
+
 ### Enumerable
 
 ```ruby
@@ -78,10 +115,16 @@ cache.select { |_k, v| v > 10 }
 | `.new(default_ttl:, max_size:)` | Create a new expiring map |
 | `#set(key, value, ttl:)` | Store a value with optional per-key TTL |
 | `#get(key)` | Retrieve a value, nil if expired or missing |
+| `#set_many(hash, ttl:)` | Bulk insert from a hash |
+| `#get_many(*keys)` | Bulk get returning hash of key => value |
 | `#delete(key)` | Remove and return a value |
+| `#delete_if { \|k, v\| }` | Remove entries where block returns true |
 | `#ttl(key)` | Return remaining TTL in seconds |
 | `#touch(key)` | Reset TTL to default |
 | `#size` | Count of non-expired entries |
+| `#keys` | Array of non-expired keys |
+| `#values` | Array of non-expired values |
+| `#stats` | Hash of hits, misses, expirations, evictions, size |
 | `#on_expire { \|k, v\| }` | Register expiration callback |
 | `#clear` | Remove all entries |
 | `#each { \|k, v\| }` | Iterate over non-expired entries |

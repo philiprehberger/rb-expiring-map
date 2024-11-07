@@ -16,6 +16,10 @@ module Philiprehberger
         @store = {}
         @mutex = Mutex.new
         @on_expire_callback = nil
+        @hits = 0
+        @misses = 0
+        @expirations = 0
+        @evictions = 0
       end
 
       # Store a value with an optional per-key TTL
@@ -44,14 +48,20 @@ module Philiprehberger
       def get(key)
         @mutex.synchronize do
           entry = @store[key]
-          return nil unless entry
+          unless entry
+            @misses += 1
+            return nil
+          end
 
           if entry.expired?
+            @expirations += 1
+            @misses += 1
             fire_expire(key, entry.value)
             @store.delete(key)
             return nil
           end
 
+          @hits += 1
           entry.value
         end
       end
@@ -139,12 +149,88 @@ module Philiprehberger
         pairs.each(&block)
       end
 
+      # Return statistics about the map
+      #
+      # @return [Hash] stats with hits, misses, expirations, evictions, size
+      def stats
+        @mutex.synchronize do
+          sweep_expired
+          {
+            hits: @hits,
+            misses: @misses,
+            expirations: @expirations,
+            evictions: @evictions,
+            size: @store.size
+          }
+        end
+      end
+
+      # Bulk insert from a hash
+      #
+      # @param hash [Hash] key-value pairs to insert
+      # @param ttl [Numeric, nil] TTL for all entries, uses default if nil
+      # @return [void]
+      def set_many(hash, ttl: nil)
+        hash.each { |k, v| set(k, v, ttl: ttl) }
+      end
+
+      # Bulk retrieve values by keys
+      #
+      # @param keys [Array<Object>] keys to retrieve
+      # @return [Hash] key => value (nil for misses)
+      def get_many(*keys)
+        keys.flatten.to_h { |k| [k, get(k)] }
+      end
+
+      # Remove entries where the block returns true
+      #
+      # @yield [key, value] each non-expired entry
+      # @return [Integer] count of deleted entries
+      def delete_if(&block)
+        raise ArgumentError, 'block required' unless block
+
+        @mutex.synchronize do
+          sweep_expired
+          count = 0
+          @store.delete_if do |key, entry|
+            if block.call(key, entry.value)
+              count += 1
+              true
+            else
+              false
+            end
+          end
+          count
+        end
+      end
+
+      # Return all non-expired keys
+      #
+      # @return [Array<Object>] array of keys
+      def keys
+        @mutex.synchronize do
+          sweep_expired
+          @store.keys
+        end
+      end
+
+      # Return all non-expired values
+      #
+      # @return [Array<Object>] array of values
+      def values
+        @mutex.synchronize do
+          sweep_expired
+          @store.values.map(&:value)
+        end
+      end
+
       private
 
       # Remove all expired entries, firing callbacks
       def sweep_expired
         @store.delete_if do |key, entry|
           if entry.expired?
+            @expirations += 1
             fire_expire(key, entry.value)
             true
           else
@@ -159,7 +245,10 @@ module Philiprehberger
         return unless oldest_key
 
         entry = @store.delete(oldest_key)
-        fire_expire(oldest_key, entry.value) if entry
+        return unless entry
+
+        @evictions += 1
+        fire_expire(oldest_key, entry.value)
       end
 
       # Fire the expiration callback if registered
