@@ -27,7 +27,7 @@ gem install philiprehberger-expiring_map
 ## Usage
 
 ```ruby
-require 'philiprehberger/expiring_map'
+require "philiprehberger/expiring_map"
 
 cache = Philiprehberger::ExpiringMap.new(default_ttl: 300)
 cache.set(:session, 'abc123')
