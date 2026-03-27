@@ -3,6 +3,7 @@
 [![Tests](https://github.com/philiprehberger/rb-expiring-map/actions/workflows/ci.yml/badge.svg)](https://github.com/philiprehberger/rb-expiring-map/actions/workflows/ci.yml)
 [![Gem Version](https://badge.fury.io/rb/philiprehberger-expiring_map.svg)](https://rubygems.org/gems/philiprehberger-expiring_map)
 [![License](https://img.shields.io/github/license/philiprehberger/rb-expiring-map)](LICENSE)
+[![Sponsor](https://img.shields.io/badge/sponsor-GitHub%20Sponsors-ec6cb9)](https://github.com/sponsors/philiprehberger)
 
 Thread-safe hash with per-key TTL and automatic expiration
 
