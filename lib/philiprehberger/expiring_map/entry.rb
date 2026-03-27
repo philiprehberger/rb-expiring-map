@@ -29,7 +29,7 @@ module Philiprehberger
       # @return [Float] seconds until expiration, 0 if expired
       def ttl
         remaining = @expires_at - Process.clock_gettime(Process::CLOCK_MONOTONIC)
-        remaining > 0 ? remaining : 0.0
+        remaining.positive? ? remaining : 0.0
       end
     end
   end
