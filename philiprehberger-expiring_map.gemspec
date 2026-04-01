@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
 
   spec.summary = 'Thread-safe hash with per-key TTL and automatic expiration'
   spec.description = 'A thread-safe hash map where each key has its own TTL, with automatic expiration, ' \
-                       'max size eviction, expiration callbacks, and Enumerable support.'
+                     'max size eviction, expiration callbacks, and Enumerable support.'
   spec.homepage = 'https://philiprehberger.com/open-source-packages/ruby/philiprehberger-expiring_map'
   spec.license = 'MIT'
 
