@@ -66,6 +66,50 @@ module Philiprehberger
         end
       end
 
+      # Retrieve a value by key, or atomically compute and store it on miss
+      #
+      # If the key is present and not expired, returns the stored value.
+      # Otherwise evaluates the block, stores the result under +key+ with the
+      # default TTL (or +ttl:+ override), and returns it. The get/compute/set
+      # path runs under the same mutex used by +#get+ and +#set+ so there is
+      # no race with concurrent writers.
+      #
+      # @param key [Object] the key
+      # @param ttl [Numeric, nil] TTL in seconds for the inserted value on miss, uses default if nil
+      # @yieldreturn [Object] the value to memoize under +key+ on miss
+      # @raise [KeyError] if the key is missing/expired and no block is given
+      # @return [Object] the stored or freshly computed value
+      def fetch(key, ttl: nil)
+        @mutex.synchronize do
+          entry = @store[key]
+
+          if entry && !entry.expired?
+            @hits += 1
+            return entry.value
+          end
+
+          if entry&.expired?
+            @expirations += 1
+            fire_expire(key, entry.value)
+            @store.delete(key)
+          end
+
+          @misses += 1
+
+          raise KeyError, "key not found: #{key.inspect}" unless block_given?
+
+          value = yield
+          effective_ttl = ttl || @default_ttl
+          expires_at = Process.clock_gettime(Process::CLOCK_MONOTONIC) + effective_ttl
+
+          sweep_expired
+          evict_oldest if @max_size && @store.size >= @max_size && !@store.key?(key)
+          @store[key] = Entry.new(value, expires_at)
+
+          value
+        end
+      end
+
       # Delete a key
       #
       # @param key [Object] the key
