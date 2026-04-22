@@ -42,6 +42,19 @@ cache.set(:config, data, ttl: 3600)   # expires in 1 hour
 cache.ttl(:token)                      # => remaining seconds
 ```
 
+### Fetch-or-compute
+
+```ruby
+cache = Philiprehberger::ExpiringMap.new(default_ttl: 300)
+
+# On miss, the block is evaluated, the result stored, and returned.
+# On hit, the stored value is returned and the block is not called.
+user = cache.fetch(:user_42) { User.find(42) }
+
+# Override the TTL for this insert only:
+token = cache.fetch(:token, ttl: 60) { Auth.issue_token }
+```
+
 ### Max Size with Eviction
 
 ```ruby
@@ -115,6 +128,7 @@ cache.select { |_k, v| v > 10 }
 | `.new(default_ttl:, max_size:)` | Create a new expiring map |
 | `#set(key, value, ttl:)` | Store a value with optional per-key TTL |
 | `#get(key)` | Retrieve a value, nil if expired or missing |
+| `#fetch(key, ttl:) { block }` | Return stored value or atomically memoize block result on miss |
 | `#set_many(hash, ttl:)` | Bulk insert from a hash |
 | `#get_many(*keys)` | Bulk get returning hash of key => value |
 | `#delete(key)` | Remove and return a value |

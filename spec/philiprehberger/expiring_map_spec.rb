@@ -63,6 +63,55 @@ RSpec.describe Philiprehberger::ExpiringMap do
       end
     end
 
+    describe '#fetch' do
+      it 'returns the existing value and does not call the block on hit' do
+        map.set(:key, 'cached')
+        called = false
+        result = map.fetch(:key) do
+  called = true
+  'computed'
+end
+        expect(result).to eq('cached')
+        expect(called).to be(false)
+      end
+
+      it 'calls the block, stores the result, and returns it on miss' do
+        called = 0
+        result = map.fetch(:missing) do
+  called += 1
+  'fresh'
+end
+        expect(result).to eq('fresh')
+        expect(called).to eq(1)
+        expect(map.get(:missing)).to eq('fresh')
+      end
+
+      it 'stores with the ttl: override on miss' do
+        map.fetch(:key, ttl: 7) { 'value' }
+        remaining = map.ttl(:key)
+        expect(remaining).to be > 6
+        expect(remaining).to be <= 7
+      end
+
+      it 'propagates errors from the block and does not cache anything' do
+        expect { map.fetch(:boom) { raise 'nope' } }.to raise_error(RuntimeError, 'nope')
+        expect(map.get(:boom)).to be_nil
+      end
+
+      it 'raises KeyError when no block is given and key is missing' do
+        expect { map.fetch(:missing) }.to raise_error(KeyError)
+      end
+
+      it 'recomputes the value when the existing entry has expired' do
+        short_map = described_class.new(default_ttl: 10)
+        short_map.set(:key, 'old', ttl: 0.01)
+        sleep(0.02)
+        result = short_map.fetch(:key) { 'new' }
+        expect(result).to eq('new')
+        expect(short_map.get(:key)).to eq('new')
+      end
+    end
+
     describe '#ttl' do
       it 'returns remaining TTL' do
         map.set(:key, 'value', ttl: 10)
