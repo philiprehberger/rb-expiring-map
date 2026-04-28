@@ -121,6 +121,33 @@ cache.each { |key, value| puts "#{key}: #{value}" }
 cache.select { |_k, v| v > 10 }
 ```
 
+### Manual Sweep
+
+Most read methods (`get`, `size`, `each`, `keys`, `values`) sweep expired
+entries lazily on access. Long-running processes that read sparingly can
+accumulate stale entries between reads — call `purge_expired!` to reclaim
+memory and fire `on_expire` callbacks for everything that has expired:
+
+```ruby
+cache.set(:a, 1, ttl: 0.01)
+cache.set(:b, 2, ttl: 10)
+sleep 0.02
+
+cache.purge_expired!  # => 1   (number of entries removed)
+cache.keys             # => [:b]
+```
+
+`expired?(key)` returns whether a present key has elapsed its TTL — without
+deleting the entry or firing `on_expire`. Distinct from `get(key).nil?`,
+which can't tell "missing" from "expired":
+
+```ruby
+cache.set(:dead, 'gone', ttl: 0.01)
+sleep 0.02
+cache.expired?(:dead)   # => true
+cache.expired?(:nope)   # => false (missing, not expired)
+```
+
 ## API
 
 | Method | Description |
@@ -142,6 +169,8 @@ cache.select { |_k, v| v > 10 }
 | `#on_expire { \|k, v\| }` | Register expiration callback |
 | `#clear` | Remove all entries |
 | `#each { \|k, v\| }` | Iterate over non-expired entries |
+| `#purge_expired!` | Actively sweep expired entries; fires `on_expire`; returns the count removed |
+| `#expired?(key)` | Whether the entry at `key` is present-but-expired (does not delete or fire `on_expire`) |
 
 ## Development
 

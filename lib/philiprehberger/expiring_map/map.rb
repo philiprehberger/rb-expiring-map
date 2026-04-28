@@ -268,6 +268,39 @@ module Philiprehberger
         end
       end
 
+      # Actively sweep expired entries and return how many were removed.
+      #
+      # Most read methods (`get`, `size`, `each`, `keys`, `values`) sweep lazily,
+      # so long-running processes that read sparingly may accumulate stale
+      # entries before the next read triggers cleanup. Call this to reclaim
+      # memory and fire `on_expire` callbacks for everything that has expired.
+      #
+      # @return [Integer] number of entries removed
+      def purge_expired!
+        @mutex.synchronize do
+          before = @store.size
+          sweep_expired
+          before - @store.size
+        end
+      end
+
+      # Whether the entry at +key+ has expired.
+      #
+      # Returns +false+ when the key is missing or still valid; returns +true+
+      # when the entry exists but its TTL has elapsed. Unlike `get`, this does
+      # not delete the entry or fire `on_expire`.
+      #
+      # @param key [Object] the key
+      # @return [Boolean]
+      def expired?(key)
+        @mutex.synchronize do
+          entry = @store[key]
+          return false unless entry
+
+          entry.expired?
+        end
+      end
+
       private
 
       # Remove all expired entries, firing callbacks

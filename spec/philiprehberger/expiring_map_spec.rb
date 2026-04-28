@@ -526,5 +526,73 @@ end
         expect(map.values).to eq([])
       end
     end
+
+    describe '#purge_expired!' do
+      it 'returns 0 when nothing has expired' do
+        map.set(:a, 1, ttl: 10)
+        map.set(:b, 2, ttl: 10)
+        expect(map.purge_expired!).to eq(0)
+      end
+
+      it 'removes expired entries and returns the count' do
+        map.set(:short_a, 'gone', ttl: 0.01)
+        map.set(:short_b, 'gone', ttl: 0.01)
+        map.set(:long, 'here', ttl: 10)
+        sleep(0.02)
+
+        expect(map.purge_expired!).to eq(2)
+        expect(map.keys).to eq([:long])
+      end
+
+      it 'fires on_expire callbacks for swept entries' do
+        expired = []
+        map.on_expire { |k, v| expired << [k, v] }
+
+        map.set(:dead, 'gone', ttl: 0.01)
+        sleep(0.02)
+        map.purge_expired!
+
+        expect(expired).to eq([[:dead, 'gone']])
+      end
+
+      it 'returns 0 for an empty map' do
+        expect(map.purge_expired!).to eq(0)
+      end
+    end
+
+    describe '#expired?' do
+      it 'returns false for a missing key' do
+        expect(map.expired?(:nope)).to be(false)
+      end
+
+      it 'returns false for a still-valid key' do
+        map.set(:fresh, 'still good', ttl: 10)
+        expect(map.expired?(:fresh)).to be(false)
+      end
+
+      it 'returns true for a key whose TTL has elapsed' do
+        map.set(:dead, 'gone', ttl: 0.01)
+        sleep(0.02)
+        expect(map.expired?(:dead)).to be(true)
+      end
+
+      it 'does not delete the entry on a true result' do
+        map.set(:dead, 'gone', ttl: 0.01)
+        sleep(0.02)
+        map.expired?(:dead)
+        expect(map.delete(:dead)).to eq('gone')
+      end
+
+      it 'does not fire on_expire' do
+        fired = []
+        map.on_expire { |k, v| fired << [k, v] }
+        map.set(:dead, 'gone', ttl: 0.01)
+        sleep(0.02)
+
+        map.expired?(:dead)
+
+        expect(fired).to eq([])
+      end
+    end
   end
 end

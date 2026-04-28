@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-04-27
+
+### Added
+- `Map#purge_expired!` — actively sweep expired entries and return the count removed; fires `on_expire` callbacks. Useful for explicit cleanup in long-running processes that read sparingly.
+- `Map#expired?(key)` — predicate for whether an entry is present-but-expired without deleting it or firing `on_expire`. Distinct from `get(key).nil?`, which can't tell "missing" from "expired".
+
 ## [0.3.0] - 2026-04-17
 
 ### Added
